@@ -1,0 +1,6 @@
+# Node modules folder ko ignore karna (agar hai)
+node_modules/
+
+# Environment variables file ignore karna
+.env
+
