@@ -25,57 +25,6 @@ const tripTiming = require("./models/tripTiming");
 const UserDetails = require("./models/UserDetails");
 
 // Routes
-app.get("/", (req, res) => {
-  res.send("hi i am root");
-});
-
-
-const getDetailedTrips = async () => {
-  const trips = await TripQuote.find({});
-  return await Promise.all(trips.map(async (trip) => {
-    const goingStops = await Stop.find({ tripId: trip._id, stopType: "going" });
-    const returnStops = await Stop.find({ tripId: trip._id, stopType: "return" });
-    const timing = await tripTiming.findOne({ tripId: trip._id });
-    const user = await UserDetails.findOne({ tripId: trip._id });
-
-    return { trip, goingStops, returnStops, timing, user };
-  }));
-};
-
-
-app.get("/login", async (req, res) => {
-  try {
-    res.render("logInPage/index");
-  } catch (err) {
-    console.error("Error loading logInPage/index:", err);
-    res.status(500).send("Something went wrong");
-  }
-});
-
-
-app.post(["/1stLink","/dashboard"], async (req, res) => {
-  try {
-     console.log("Received login:", req.body);
-    const detailedTrips = await getDetailedTrips();
-    res.render("nav-item/1stLink", { detailedTrips });
-  } catch (err) {
-     console.log("Received login:", req.body);
-    res.status(500).send("Something went wrong");
-  }
-});
-
-
-app.get('/leads-details', async (req, res) => {
-  try {
-    const detailedTrips = await getDetailedTrips();
-    res.render('nav-item/leads-details', { detailedTrips });
-  } catch (err) {
-    console.error("Error loading /lead-details:", err);
-    res.status(500).send("Something went wrong");
-  }
-});
-
-
 
 app.get("/trip", (req, res) => {
   res.render("1stPage");
@@ -231,6 +180,7 @@ app.post("/submit-user-details", async (req, res) => {
       fullName,
       phoneNumber,
       email,
+      password,
       additionalInfo,
       confirmedDetails: confirmed,
       agreedToPrivacyPolicy: agreed,
@@ -283,6 +233,69 @@ app.get("/review/:tripId", async (req, res) => {
     res.status(500).send("Something went wrong");
   }
 });
+
+const getDetailedTrips = async () => {
+  const trips = await TripQuote.find({});
+  return await Promise.all(trips.map(async (trip) => {
+    const goingStops = await Stop.find({ tripId: trip._id, stopType: "going" });
+    const returnStops = await Stop.find({ tripId: trip._id, stopType: "return" });
+    const timing = await tripTiming.findOne({ tripId: trip._id });
+    const user = await UserDetails.findOne({ tripId: trip._id });
+
+    return { trip, goingStops, returnStops, timing, user };
+  }));
+};
+
+
+app.get("/login", async (req, res) => {
+  try {
+    res.render("logInPage/index");
+  } catch (err) {
+    console.error("Error loading logInPage/index:", err);
+    res.status(500).send("Something went wrong");
+  }
+});
+
+
+app.get(["/1stLink","/dashboard"], async (req, res) => {
+  try {
+     console.log("Received login:", req.body);
+    const detailedTrips = await getDetailedTrips();
+    res.render("nav-item/1stLink", { detailedTrips });
+  } catch (err) {
+     console.log("Received login:", req.body);
+    res.status(500).send("Something went wrong");
+  }
+});
+
+// Handle login form submission
+app.post("/1stLink", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    console.log("Login request:", email, password);
+
+    
+  } catch (err) {
+    console.error("Error processing login:", err);
+    res.status(500).send("Something went wrong");
+  }
+});
+
+
+app.get('/leads-details', async (req, res) => {
+  try {
+    const detailedTrips = await getDetailedTrips();
+    res.render('nav-item/leads-details', { detailedTrips });
+  } catch (err) {
+    console.error("Error loading /lead-details:", err);
+    res.status(500).send("Something went wrong");
+  }
+});
+
+
+
+
 
 app.listen(8080, () => {
   console.log("Server is listening on port 8080");
