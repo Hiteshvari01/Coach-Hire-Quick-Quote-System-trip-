@@ -2,6 +2,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
 require('dotenv').config();
+const twilio = require('twilio');
+const client = new twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
 const app = express();
 
@@ -29,44 +31,6 @@ app.get("/", (req, res) => {
   res.render("1stPage");
 });
 
-app.get('/2ndLink', (req, res) => {
-  res.render('nav-item/2ndLink'); 
-});
-
-app.get('/transactions', (req, res) => {
-  res.render('nav-item/2ndLink'); 
-});
-
-app.get('/3rdLink', (req, res) => {
-  res.render('nav-item/3rdLink'); 
-});
-
-app.get('/users', (req, res) => {
-  res.render('nav-item/3rdLink'); 
-});
-
-app.get('/4thLink', (req, res) => {
-  res.render('nav-item/4thLink'); 
-});
-
-app.get('/emailtemp', (req, res) => {
-  res.render('nav-item/4thLink'); 
-});
-app.get('/5thLink', (req, res) => {
-  res.render('nav-item/5thLink'); 
-});
-
-app.get('/ErchivedLead', (req, res) => {
-  res.render('nav-item/5thLink'); 
-});
-
-app.get('/6thLink', (req, res) => {
-  res.render('nav-item/6thLink'); 
-});
-
-app.get('/settings', (req, res) => {
-  res.render('nav-item/6thLink'); 
-});
 
 app.post("/api/trip/start", async (req, res) => {
   
@@ -154,11 +118,6 @@ app.post("/save-trip-timing", async (req, res) => {
   }
 });
 
-const twilio = require("twilio");
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-
-const client = twilio(accountSid, authToken);
 
 app.post("/submit-user-details", async (req, res) => {
   try {
@@ -180,7 +139,6 @@ app.post("/submit-user-details", async (req, res) => {
       fullName,
       phoneNumber,
       email,
-      password,
       additionalInfo,
       confirmedDetails: confirmed,
       agreedToPrivacyPolicy: agreed,
@@ -188,112 +146,46 @@ app.post("/submit-user-details", async (req, res) => {
 
     await userDetails.save();
 
-    // ✅ Fetch related trip info
-    const trip = await TripQuote.findById(tripId);
-    const timing = await tripTiming.findOne({ tripId });
+    // WhatsApp message bhejna
+    try {
+      await client.messages.create({
+body: 
+`*Hello ${fullName}!* 👋
 
-    // ✅ WhatsApp message
-    const message = `🚌 *New Quote Request* \n${trip.pickupLocation} → ${trip.destinationLocation} | ${timing?.departureDate || 'N/A'}`;
+Your booking request has been received successfully. Here are your booking details:
 
-    await client.messages.create({
-      from: 'whatsapp:+14155238886', // Twilio sandbox
-      to: 'whatsapp:+916269115002', // Must include country code (e.g., +91...)
-      body: message
-    });
+*Trip ID:* \`${tripId}\`
+*Status:* _Pending Confirmation_
 
-    res.redirect(`/review/${tripId}`);
+Please reply with *CONFIRM* to finalize your booking.
+
+Thank you for choosing us! 🙏
+`,
+        from: 'whatsapp:+14155238886',
+        to: `whatsapp:+91${phoneNumber}`
+         // country code ke hisaab se adjust karo
+      });
+      
+      console.log("WhatsApp confirmation message sent.");
+    } catch(err) {
+      console.error("Failed to send WhatsApp message:", err);
+    }
+
+    // Fetch related trip data
+    const trip = await TripQuote.findById(tripId).lean();
+    const goingStops = await Stop.find({ tripId, stopType: 'going' }).lean();
+    const returnStops = await Stop.find({ tripId, stopType: 'return' }).lean();
+    const timing = await tripTiming.findOne({ tripId }).lean();
+    const user = await UserDetails.findOne({ tripId }).lean();
+
+    // Pass all data to the reviewPage template
+    res.render("reviewPage", { trip, goingStops, returnStops, timing, user });
+
   } catch (err) {
-    console.error("Error saving user details:", err);
+    console.error("Error saving user details or fetching data:", err);
     res.status(500).send("Something went wrong");
   }
 });
-
-
-// ✅ Final Review Page Route
-app.get("/review/:tripId", async (req, res) => {
- 
-  try {
-    const { tripId } = req.params;
-
-    const trip = await TripQuote.findById(tripId);
-    const goingStops = await Stop.find({ tripId, stopType: "going" });
-    const returnStops = await Stop.find({ tripId, stopType: "return" });
-    const timing = await tripTiming.findOne({ tripId });
-    const user = await UserDetails.findOne({ tripId });
-
-    res.render("reviewPage", {
-      trip,
-       goingStops,
-      returnStops,
-      timing,
-      user
-    });
-  } catch (err) {
-    console.error("Error fetching trip details:", err);
-    res.status(500).send("Something went wrong");
-  }
-});
-
-const getDetailedTrips = async () => {
-  const trips = await TripQuote.find({});
-  return await Promise.all(trips.map(async (trip) => {
-    const goingStops = await Stop.find({ tripId: trip._id, stopType: "going" });
-    const returnStops = await Stop.find({ tripId: trip._id, stopType: "return" });
-    const timing = await tripTiming.findOne({ tripId: trip._id });
-    const user = await UserDetails.findOne({ tripId: trip._id });
-
-    return { trip, goingStops, returnStops, timing, user };
-  }));
-};
-
-
-app.get("/login", async (req, res) => {
-  try {
-    res.render("logInPage/index");
-  } catch (err) {
-    console.error("Error loading logInPage/index:", err);
-    res.status(500).send("Something went wrong");
-  }
-});
-
-
-app.get(["/1stLink","/dashboard"], async (req, res) => {
-  try {
-     console.log("Received login:", req.body);
-    const detailedTrips = await getDetailedTrips();
-    res.render("nav-item/1stLink", { detailedTrips });
-  } catch (err) {
-     console.log("Received login:", req.body);
-    res.status(500).send("Something went wrong");
-  }
-});
-
-// Handle login form submission
-app.post("/1stLink", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    console.log("Login request:", email, password);
-
-    
-  } catch (err) {
-    console.error("Error processing login:", err);
-    res.status(500).send("Something went wrong");
-  }
-});
-
-
-app.get('/leads-details', async (req, res) => {
-  try {
-    const detailedTrips = await getDetailedTrips();
-    res.render('nav-item/leads-details', { detailedTrips });
-  } catch (err) {
-    console.error("Error loading /lead-details:", err);
-    res.status(500).send("Something went wrong");
-  }
-});
-
-
 
 
 

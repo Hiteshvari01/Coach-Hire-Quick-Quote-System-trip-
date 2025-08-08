@@ -21,6 +21,7 @@ const userDetailsSchema = new mongoose.Schema({
     trim: true,
   lowercase: true
   },
+  
   additionalInfo: {
     type: String,
     default: "",
