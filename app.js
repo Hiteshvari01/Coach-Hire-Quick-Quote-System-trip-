@@ -2,7 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
 require('dotenv').config();
-
+const port = process.env.PORT || 8080;
 const app = express();
 
 // Middleware & View Setup
@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // MongoDB Connection 
-mongoose.connect("mongodb://localhost:27017/bus_booking")
+mongoose.connect("mongoose.connect(process.env.MONGODB_URI")
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("MongoDB connection error:", err));
 
@@ -297,6 +297,8 @@ app.get('/leads-details', async (req, res) => {
 
 
 
-app.listen(8080, () => {
-  console.log("Server is listening on port 8080");
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`Server is listening on port ${PORT}`);
 });
+
