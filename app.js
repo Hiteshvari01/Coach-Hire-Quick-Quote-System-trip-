@@ -25,10 +25,10 @@ const tripTiming = require("./models/tripTiming");
 const UserDetails = require("./models/UserDetails");
 
 // Routes
-
-app.get("/trip", (req, res) => {
+app.get("/", (req, res) => {
   res.render("1stPage");
 });
+
 app.get('/2ndLink', (req, res) => {
   res.render('nav-item/2ndLink'); 
 });
